@@ -9,12 +9,12 @@ TRAGALDABAS Version
 
 #### GENE
 
- Genera ntraks trazas de una particula cargada y la
- propaga en la direccion del eje Z a traves de nplan planos
+Generates ntracks for a charged particle and propagates it on the Z 
+direction through the nplan planes.
 #### DIGIT
-Simula la respuesta digital en nplan planos de detectores, en los que:
- - se determina las coordenadas (nx,ny) del pad por atravesado
- - Se determina el tiempo de vuelo intengrarado tint, 
+Simulates the digital response on the nplan detector planes, in which:
+ - Coordinates (nx, ny) are determined where the track hit
+ - The flight time is determined integrating tint
 #### ANA
  - Reconstruye la traza mediante el metodo TimTrack, usando la respuesta del
 detetor. Por ello la traza reconstruida no coincide exactamente con la 
@@ -30,8 +30,8 @@ Algunos criterios de programacion:
  - Los nombres de los vectores comienzan con v
  - Los nombres de las matrices comienzan con m
 ********************************************************************
-Unidades tipicas:
- - Masa, momento y energia: MeV
- - Distancias en mm
- - Tiempo de ps
+Typical Units:
+ - Mass, momentum y energy: MeV
+ - Distances in mm
+ - Time in ps
 ********************************************************************

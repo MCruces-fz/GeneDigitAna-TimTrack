@@ -2,7 +2,7 @@
 """
 Created on Tue Aug 25 18:34:36 2015
 
-@author: jag
+@author: JA Garzon
 Edit 1: Sara Costa
 Edit 2: Miguel Cruces
 """
@@ -17,6 +17,93 @@ np.set_printoptions(formatter={'float': '{:.3f}'.format})
 time_start = time.perf_counter()
 np.random.seed(11)
 
+
+# =================================================================================================================== #
+# ============================================== C O N S T A N T S ================================================== #
+# =================================================================================================================== #
+
+# Initial Configuration
+final_prints = True
+
+
+# Physical Constants
+c = 0.3  # [mm/ps]
+sc = 1 / c  # [ps/mm] Slowness associated to the light celerity
+mele = 0.511  # [MeV/c^2]
+mmu = 105.6  # [MeV/c^2]
+mpro = 938.3  # [MeV/c^2]
+
+# Modifiable data
+mass = mmu
+kene = 1000  # MeV, Kinetic Energy
+ene = mass * c + kene  # [MeV]
+gamma = ene / (mass * c)
+beta = np.sqrt(1 - 1 / (gamma * gamma))
+betgam = beta * gamma
+vini = beta * c  # [mm/ps] Initial Velocity
+sini = 1 / vini  # [ps/mm]
+pmom = betgam * mass  # [MeV/c^2]
+
+ntrack = 10  # No. of tracks to generate
+thmax = 10  # [deg] max theta
+npar = 6  # No. of fit parameters
+mcut = 0.01  # Module of cut for iterations
+
+# Initial values
+
+sini = sc
+tini = 1000
+# ***
+# xdini  = [mass/1000, ene/1000, beta, gamma];
+
+
+# Detector design
+
+# RECTANGULAR DETECTOR WITH NCX*NCY RECTANGULAR ELECTRODES
+# IT IS ASSUMED THAT THE ORIGIN IS IN ONE EDGE OF THE DETECTOR
+
+# Planes distribution:
+#                                    [mm]   [mm]
+# T1 # -------------------------- # 1826      0  TOP
+#
+# T2 # -------------------------- # 1304    522
+# T3 # -------------------------- #  924    902
+#
+#
+# T4 # -------------------------- #   87   1739  BOTTOM
+#                                      0         GROUND
+
+nplan = 4  # No. of planes
+ncx = 12  # No. of cells in x direction
+ncy = 10  # No. of cells in y direction
+vz = np.array([1826, 1304, 924, 87])  # [mm] Planes position
+vzi = vz[0] - vz  # [0, 522, 902, 1739] mm. Planes position relative to top plane
+lenx = 1500  # [mm] Plane length in x direction
+leny = 1200  # [mm] Plane length in y direction
+lenz = vzi[-1] - vzi[0]  # [mm] Detector height (from top to bottom)
+wcx = lenx / ncx  # [mm] Width of cell in x direction
+wcy = leny / ncy  # [mm] Width of cell in y direction
+wdt = 100  # [ps] Precision on time measurement
+
+# Uncertainties
+sigx = wcx / np.sqrt(12)  # [mm] Sigma X
+sigy = wcy / np.sqrt(12)  # [mm] Sigma Y
+sigt = 300  # [ps] Sigma T
+wx = 1 / sigx ** 2
+wy = 1 / sigy ** 2
+wt = 1 / sigt ** 2
+dt = 100  # Digitizer precision
+
+# Measured data Vectors
+vdx = np.zeros(nplan)
+vdy = np.zeros(nplan)
+vdt = np.zeros(nplan)
+
+mtgen = np.zeros([ntrack, npar])  # Generated tracks matrix
+mtrec = np.zeros([ntrack, npar])  # Reconstructed tracks matrix
+vtrd = np.zeros(nplan * 3)  # Digitized tracks vector
+mtrd = np.zeros([1, nplan * 3])  # Detector data Matrix
+mErr = np.zeros([npar, npar])
 
 # =================================================================================================================== #
 # =================================== F U N C T I O N   D E F I N I T I O N S ======================================= #
@@ -44,7 +131,6 @@ def mKpads4(z, wx, wy, wt):
     mK[3, 3] = wy * z * z
     mK[3, 2] = mK[2, 3]
     return mK
-
 
 
 def v_g0_pads(vs, z):
@@ -112,81 +198,10 @@ def m_K_a_pads(vs, z, vw, vdat):
 
 
 # =================================================================================================================== #
-# ============================================== C O N S T A N T S ================================================== #
-# =================================================================================================================== #
-
-# Physical Constants
-c = 0.3  # [mm/ps]
-sc = 1 / c  # lentitud asociada a la velocidad de la luz
-mele = 0.511
-mmu = 105.6
-mpro = 938.3
-
-# Modifiable data
-masa = mmu
-kene = 1000  # MeV, energia cinetica
-ene = masa + kene
-gamma = ene / masa
-beta = np.sqrt(1 - 1 / (gamma * gamma))
-betgam = beta * gamma
-vini = beta * c  # velocidad inicial
-sini = 1 / vini
-pmom = betgam * masa
-
-ntrack = 10  # num. de trazas a generar
-thmax = 10  # max theta en grados
-npar = 6  # numero de parametros a ajustar
-mcut = 0.01  # modulo de corte para la iteracion
-
-# Initial values
-
-sini = sc
-tini = 1000
-# ***
-# xdini  = [masa/1000, ene/1000, beta, gamma];
-
-
-# Detector design
-
-# Detector rectangular con ncx*ncy electrodos rectangulares
-# Asumimos el origen de coordenadas en una esquina del detector
-
-nplan = 4  # num. de planos
-ncx = 12  # num. celdas en x
-ncy = 10  # num. celdas en y
-vzi = [0, 600, 900, 1800]  # posicion de los planos
-lenx = 1500  # longitud en x
-leny = 1200  # longitud en y
-wcx = lenx / ncx  # anchura de la celda en x
-wcy = leny / ncy  # anchura de la celda en y
-wdt = 100
-
-# Uncertainty
-sigx = (1 / np.sqrt(12)) * wcx
-sigy = (1 / np.sqrt(12)) * wcy
-sigt = 300  # [ps]
-wx = 1 / sigx ** 2
-wy = 1 / sigy ** 2
-wt = 1 / sigt ** 2
-dt = 100  # precision del digitalizador
-
-# Measured data Vectors
-vdx = np.zeros(nplan)
-vdy = np.zeros(nplan)
-vdt = np.zeros(nplan)
-
-mtgen = np.zeros([ntrack, npar])  # matriz de trazas generadas
-mtrec = np.zeros([ntrack, npar])  # matriz de trazas reconstruidas
-vtrd = np.zeros(nplan * 3)  # vector de trazas digitalizacion
-mtrd = np.zeros([1, nplan * 3])  # matriz de datos del detector
-mErr = np.zeros([npar, npar])
-
-# =================================================================================================================== #
 # ====================================== T R A C K S   G E N E R A T I O N ========================================== #
 # =================================================================================================================== #
 
-ctmx = np.cos(np.deg2rad(thmax))  # coseno de theta_max
-lenz = vzi[nplan - 1] - vzi[0]
+ctmx = np.cos(np.deg2rad(thmax))
 it = 0
 
 for i in range(ntrack):
@@ -200,18 +215,12 @@ for i in range(ntrack):
     t0 = tini
     s0 = sini
 
-    cx = np.sin(tth) * np.cos(tph)  # cosenos directores
+    # Director cosines
+    cx = np.sin(tth) * np.cos(tph)
     cy = np.sin(tth) * np.sin(tph)
     cz = np.cos(tth)
-    xp = cx / cz  # pendiente proyectada en el plano X-Z
-    yp = cy / cz  # pendiente proyectada en el plano Y-Z
-    '''
-    #Parche para simular una traza concreta
-    x0 = 1000
-    xp = 0.1
-    y0 = 600
-    yp = -0.1
-    '''
+    xp = cx / cz  # Projected slope on the X-Z plane
+    yp = cy / cz  # Projected slope on the Y-Z plane
 
     # Coordenada por donde saldria la particula
     xzend = x0 + xp * lenz
@@ -264,7 +273,7 @@ for it in range(nt):
         it = it + 3
     mtrd = np.vstack((mtrd, vtrd))
     nx = nx + 1
-mtrd = np.delete(mtrd, (0), axis=0)
+mtrd = np.delete(mtrd, 0, axis=0)
 
 # =================================================================================================================== #
 # ======================= T R A C K   A N A L Y S I S   A N D   R E C O N S T R U C T I O N ========================= #
@@ -272,8 +281,7 @@ mtrd = np.delete(mtrd, (0), axis=0)
 
 vw = np.asarray([wx, wy, wt])
 mvw = np.zeros([3, 3])
-np.fill_diagonal(mvw, vw)
-vsim = np.asarray([x0, xp, y0, yp, tini, sini])
+mvw[[0, 1, 2], [0, 1, 2]] = vw  # Fill diagonal with vw
 vsini = [(lenx / 2), 0, (leny / 2), 0, 0, sc]
 
 vcut = 1
@@ -282,7 +290,7 @@ nit = 0
 vs = vsini
 
 for it in range(nt):
-    while (vcut > cut):  # Iteracion
+    while vcut > cut:
         mK = np.zeros([npar, npar])
         va = np.zeros(npar)
         so = np.zeros(nplan)
@@ -290,8 +298,8 @@ for it in range(nt):
         for ip in range(nplan):
             zi = vzi[ip]
             ii = ip * 3
-            dxi = mtrd[it, ii] * wcx - (wcx / 2)  # data
-            dyi = mtrd[it, ii + 1] * wcy - (wcy / 2)
+            dxi = mtrd[it, ii] * wcx - wcx / 2
+            dyi = mtrd[it, ii + 1] * wcy - wcy / 2
             dti = mtrd[it, ii + 2]
             vdx[ip] = dxi
             vdy[ip] = dyi
@@ -362,20 +370,6 @@ plt.grid(True)
 # plt.show()
 # plt.savefig("Hist_distY.png", bbox_inches='tight')
 
-# Calculo la media
-s = 0
-for i in range(len(n)):
-    s += n[i] * ((bins[i] + bins[i + 1]) / 2)
-mean = s / np.sum(n)
-print('La media es', mean)
-
-# Calculo la desviacion estandard
-t = 0
-for i in range(len(n)):
-    t += n[i] * (bins[i] - mean) ** 2
-std = np.sqrt(t / np.sum(n))
-print('La desviacion tipica es', std)
-
 # Scatter plot
 plt.figure(4)
 plt.scatter(distanciax, distanciay, s=1)
@@ -430,12 +424,34 @@ mRed = np.array([[sigp1, cor12, cor13, cor14, cor15, cor16],
                  [0, 0, 0, 0, sigp5, cor56],
                  [0, 0, 0, 0, 0, sigp6]])
 
-for row in mRed:
-    for col in row:
-        print("{:8.3f}".format(col), end=" ")
-    print("")
 
-time_elapsed = (time.perf_counter() - time_start)
-print('Computing time:', time_elapsed)
+if final_prints:
+    print('Distance between GENERATED and RECONSTRUCTED tracks')
+    # Mean
+    s = 0
+    for i in range(len(n)):
+        s += n[i] * ((bins[i] + bins[i + 1]) / 2)
+    mean = s / np.sum(n)
 
-print('CPU usage', psutil.cpu_percent())
+    # Standard Deviation
+    t = 0
+    for i in range(len(n)):
+        t += n[i] * (bins[i] - mean) ** 2
+    std = np.sqrt(t / np.sum(n))
+
+    print(f'+-----------------------+')
+    print(f'| Mean: {mean:.3f} mm      |')
+    print(f'| Std. dev.: {std:.3f} mm |')
+    print(f'+-----------------------+')
+
+    print('\nError Matrix:')
+    for row in mRed:
+        for col in row:
+            print(f"{col:8.3f}", end=" ")
+        print("")
+
+    time_elapsed = (time.perf_counter() - time_start)
+    print('\n+----- Machine Stats -----+')
+    print(f'| Computing time: {time_elapsed:.3f} s |')
+    print(f'| CPU usage {psutil.cpu_percent():.1f} %\t\t  |')
+    print('+-------------------------+')
