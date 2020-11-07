@@ -56,23 +56,23 @@ tini = 1000
 # ***
 # xdini  = [mass/1000, ene/1000, beta, gamma];
 
+# Detector Design
+'''
+- Rectangular detector with ncx * ncy rectangular electrodes
+- It is assumed that the origin is in one edge of the detector
 
-# Detector design
+P L A N E S   D I S T R I B U T I O N
 
-# RECTANGULAR DETECTOR WITH NCX*NCY RECTANGULAR ELECTRODES
-# IT IS ASSUMED THAT THE ORIGIN IS IN ONE EDGE OF THE DETECTOR
+                                 [mm]   [mm]
+T1 # -------------------------- # 1826      0  TOP
 
-# Planes distribution:
-#                                    [mm]   [mm]
-# T1 # -------------------------- # 1826      0  TOP
-#
-# T2 # -------------------------- # 1304    522
-# T3 # -------------------------- #  924    902
-#
-#
-# T4 # -------------------------- #   87   1739  BOTTOM
-#                                      0         GROUND
+T2 # -------------------------- # 1304    522
+T3 # -------------------------- #  924    902
 
+
+T4 # -------------------------- #   87   1739  BOTTOM
+                                     0         GROUND
+'''
 nplan = 4  # No. of planes
 ncx = 12  # No. of cells in x direction
 ncy = 10  # No. of cells in y direction
