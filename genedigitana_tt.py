@@ -25,7 +25,7 @@ time_start = time.perf_counter()
 
 # Initial Configuration
 final_prints = True
-if_repr = False
+if_repr = True
 
 # Physical Constants
 c = 0.3  # [mm/ps]
@@ -174,94 +174,6 @@ def set_vstat_tt(mG, mW, vdat, vg0):
     return va_out
 
 
-'''
-def mKpads4(z, wx, wy, wt):
-    """
-    K matrix for a pad plane with 4 parameters: X0, XP, Y0, YP
-
-    :param z:
-    :param wx:
-    :param wy:
-    :param wt:
-    :return:
-    """
-    mK = np.zeros([npar, npar])
-    mK[0, 0] = wx
-    mK[0, 1] = wx * z
-    mK[1, 1] = wx * z * z
-    mK[1, 0] = mK[0, 1]
-    mK[2, 2] = wy
-    mK[2, 3] = wy * z
-    mK[3, 3] = wy * z * z
-    mK[3, 2] = mK[2, 3]
-    return mK
-
-
-def v_g0_pads(vs, z):
-    vg0 = np.zeros(3)
-    xp = vs[1]
-    yp = vs[3]
-    s0 = vs[5]
-    ks2 = 1 + xp * xp + yp * yp
-    vg0[2] = -((xp * xp + yp * yp) * s0 * z) / np.sqrt(ks2)
-
-    return vg0
-
-
-def m_K_a_pads(vs, z, vw, vdat):
-    """
-    Function that returns: K matrix and vector a for a pad plane.
-    6 parameters version: X0, XP, Y0, YP, T0, S0
-
-    :param vs:
-    :param z:
-    :param vw:
-    :param vdat:
-    :return:
-    """
-    mk = np.zeros([npar, npar])
-    vx = np.zeros(npar)
-    xp = vs[1]
-    yp = vs[3]
-    # t0   = vs[4]
-    s0 = vs[5]
-    ks2 = 1 + xp * xp + yp * yp  # slope factor
-    wx = vw[0]
-    wy = vw[1]
-    wt = vw[2]
-    dx = vdat[0]
-    dy = vdat[1]
-    dt = vdat[2]
-
-    vx[0] = wx * dx
-    vx[1] = z * (wx * dx + wt * xp * s0 * (dt * (1 / np.sqrt(ks2)) + z * (1 / ks2) * (xp ** 2 + yp ** 2) * s0))
-    vx[2] = wy * dy
-    vx[3] = z * (wy * dy + wt * yp * s0 * (dt * (1 / np.sqrt(ks2)) + z * (1 / ks2) * (xp ** 2 + yp ** 2) * s0))
-    vx[4] = wt * (dt + z * (1 / np.sqrt(ks2)) * s0 * (xp ** 2 + yp ** 2))
-    vx[5] = z * wt * ks * (dt + z * (1 / np.sqrt(ks2)) * (xp ** 2 + yp ** 2) * s0)
-
-    mk[0, 0] = wx
-    mk[0, 1] = z * wx
-    mk[1, 1] = z ** 2 * (wx + wt * (1 / ks2) * xp * xp * s0 * s0)
-    mk[1, 3] = z ** 2 * wt * (1 / ks2) * xp * s0
-    mk[1, 4] = z * wt * (1 / np.sqrt(ks2)) * xp * s0
-    mk[1, 5] = z ** 2 * wt * xp * s0
-    mk[2, 2] = wy
-    mk[2, 3] = z * wy
-    mk[3, 3] = z ** 2 * (wy + wt * (1 / ks2) * yp * yp * s0 * s0)
-    mk[3, 4] = z * wt * (1 / ks2) * yp * s0
-    mk[3, 5] = z ** 2 * wt * yp * s0
-    mk[4, 4] = wt
-    mk[4, 5] = z * wt * np.sqrt(ks2)
-    mk[5, 5] = z ** 2 * wt * ks2
-
-    # Por ser simetrica, mK=mK' (traspuesta)
-    mk = mk + mk.T - np.diag(mk.diagonal())
-
-    return mk, vx
-'''
-
-
 # P L O T   F U N C T I O N S
 
 def plot_saetas(vector, fig_id: int or str or None = None,
@@ -378,7 +290,6 @@ def plot_hit_ids(k_vec, fig_id: str = None, plt_title: str or None = None,
 
     ax.legend(loc='best')
     # plt.show()
-    # fig.show()
 
 
 def plot_detector(k_mat=None, fig_id=None, plt_title='Matrix Rays',
@@ -590,21 +501,18 @@ plt.figure(1)
 n, bins, patches = plt.hist(distancia, bins=20, alpha=1, linewidth=1)
 plt.title('Distancia entre puntos incidencia y reconstruidos')
 plt.grid(True)
-# plt.show()
 # plt.savefig("Hist_dist.png", bbox_inches='tight')
 
 plt.figure(2)
 n2, bins2, patches2 = plt.hist(distanciax, bins=20, alpha=1, linewidth=1)
 plt.title('Distancia entre puntos incidencia en X y reconstruidos en X')
 plt.grid(True)
-# plt.show()
 # plt.savefig("Hist_distX.png", bbox_inches='tight')
 
 plt.figure(3)
 n3, bins3, patches3 = plt.hist(distanciay, bins=20, alpha=1, linewidth=1)
 plt.title('Distancia entre puntos incidencia en Y y reconstruidos en Y')
 plt.grid(True)
-# plt.show()
 # plt.savefig("Hist_distY.png", bbox_inches='tight')
 
 # Scatter plot
@@ -612,54 +520,20 @@ plt.figure(4)
 plt.scatter(distanciax, distanciay)  # , marker='o')  # , s=1)
 plt.title('Scatter plot distX vs distY')
 plt.grid(True)
-# plt.show()
 # plt.savefig("Scatterplot_XY.png", bbox_inches='tight')
 
 plt.figure(5)
 plt.scatter(distanciax, distanciaxp)  # , marker='.')  # , s=1)
 plt.title('Scatter plot distX vs distX´ ')
 plt.grid(True)
-# plt.show()
 # plt.savefig("Scatterplot_XXP.png", bbox_inches='tight')
 
 plt.figure(6)
 plt.scatter(distanciay, distanciayp)  # , marker='X')  # , s=1)
 plt.title('Scatter_plot distY vs distY´ ')
 plt.grid(True)
-# plt.show()
 # plt.savefig("Scatterplot_YYP.png", bbox_inches='tight')
 
-# Matriz de error reducida
-
-sigp1 = np.sqrt(mErr[0, 0])
-sigp2 = np.sqrt(mErr[1, 1])
-sigp3 = np.sqrt(mErr[2, 2])
-sigp4 = np.sqrt(mErr[3, 3])
-sigp5 = np.sqrt(mErr[4, 4])
-sigp6 = np.sqrt(mErr[5, 5])
-
-cor12 = mErr[0, 1] / (sigp1 * sigp2)
-cor13 = mErr[0, 2] / (sigp1 * sigp3)
-cor14 = mErr[0, 3] / (sigp1 * sigp4)
-cor15 = mErr[0, 4] / (sigp1 * sigp5)
-cor16 = mErr[0, 5] / (sigp1 * sigp6)
-cor23 = mErr[1, 2] / (sigp2 * sigp3)
-cor24 = mErr[1, 3] / (sigp2 * sigp4)
-cor25 = mErr[1, 4] / (sigp2 * sigp5)
-cor26 = mErr[1, 5] / (sigp2 * sigp6)
-cor34 = mErr[2, 3] / (sigp3 * sigp4)
-cor35 = mErr[2, 4] / (sigp3 * sigp5)
-cor36 = mErr[2, 5] / (sigp3 * sigp6)
-cor45 = mErr[3, 4] / (sigp4 * sigp5)
-cor46 = mErr[3, 5] / (sigp4 * sigp6)
-cor56 = mErr[4, 5] / (sigp5 * sigp6)
-
-mRed = np.array([[sigp1, cor12, cor13, cor14, cor15, cor16],
-                 [0, sigp2, cor23, cor24, cor25, cor26],
-                 [0, 0, sigp3, cor34, cor35, cor36],
-                 [0, 0, 0, sigp4, cor45, cor46],
-                 [0, 0, 0, 0, sigp5, cor56],
-                 [0, 0, 0, 0, 0, sigp6]])
 
 if if_repr:
     # prob_tt = mtrec[:, -1]
@@ -670,6 +544,38 @@ if if_repr:
     plt.show()
 
 if final_prints:
+    # Matriz de error reducida
+
+    sigp1 = np.sqrt(mErr[0, 0])
+    sigp2 = np.sqrt(mErr[1, 1])
+    sigp3 = np.sqrt(mErr[2, 2])
+    sigp4 = np.sqrt(mErr[3, 3])
+    sigp5 = np.sqrt(mErr[4, 4])
+    sigp6 = np.sqrt(mErr[5, 5])
+
+    cor12 = mErr[0, 1] / (sigp1 * sigp2)
+    cor13 = mErr[0, 2] / (sigp1 * sigp3)
+    cor14 = mErr[0, 3] / (sigp1 * sigp4)
+    cor15 = mErr[0, 4] / (sigp1 * sigp5)
+    cor16 = mErr[0, 5] / (sigp1 * sigp6)
+    cor23 = mErr[1, 2] / (sigp2 * sigp3)
+    cor24 = mErr[1, 3] / (sigp2 * sigp4)
+    cor25 = mErr[1, 4] / (sigp2 * sigp5)
+    cor26 = mErr[1, 5] / (sigp2 * sigp6)
+    cor34 = mErr[2, 3] / (sigp3 * sigp4)
+    cor35 = mErr[2, 4] / (sigp3 * sigp5)
+    cor36 = mErr[2, 5] / (sigp3 * sigp6)
+    cor45 = mErr[3, 4] / (sigp4 * sigp5)
+    cor46 = mErr[3, 5] / (sigp4 * sigp6)
+    cor56 = mErr[4, 5] / (sigp5 * sigp6)
+
+    mRed = np.array([[sigp1, cor12, cor13, cor14, cor15, cor16],
+                     [0, sigp2, cor23, cor24, cor25, cor26],
+                     [0, 0, sigp3, cor34, cor35, cor36],
+                     [0, 0, 0, sigp4, cor45, cor46],
+                     [0, 0, 0, 0, sigp5, cor56],
+                     [0, 0, 0, 0, 0, sigp6]])
+
     print('Distance between GENERATED and RECONSTRUCTED tracks')
     # Mean
     s = 0
