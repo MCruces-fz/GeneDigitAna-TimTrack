@@ -118,8 +118,6 @@ vdx = np.zeros(nplan)
 vdy = np.zeros(nplan)
 vdt = np.zeros(nplan)
 
-mtgen = np.zeros([ntrack, npar])  # Generated tracks matrix
-mtrec = np.zeros([ntrack, npar])  # Reconstructed tracks matrix
 vtrd = np.zeros(nplan * 3)  # Digitized tracks vector
 mtrd = np.zeros([1, nplan * 3])  # Detector data Matrix
 mErr = np.zeros([npar, npar])
@@ -414,6 +412,7 @@ def plot_detector(k_mat=None, fig_id=None, plt_title='Matrix Rays',
 # ====================================== T R A C K S   G E N E R A T I O N ========================================== #
 # =================================================================================================================== #
 
+mtgen = np.zeros([0, npar])  # Generated tracks matrix
 ctmx = np.cos(np.deg2rad(thmax))
 it = 0
 
@@ -445,13 +444,11 @@ for i in range(ntrack):
 
     # Miramos si la particula ha entrado en el detector
     if (np.abs(xmid) < (lenx / 2)) and (np.abs(ymid) < (leny / 2)):
-        mtgen[it, :] = [x0, xp, y0, yp, t0, s0]
-        it = it + 1
+        mtgen = np.vstack((mtgen, [x0, xp, y0, yp, t0, s0]))
+        it += 1
     else:
         continue
 nt = it
-# Borro las lineas de ceros (en las que la particula no entro en el detector)
-mtgen = mtgen[~(mtgen == 0).all(1)]
 
 # vstrk = [x0, xp, y0, yp, tini, sini]
 
@@ -493,6 +490,8 @@ mtrd = np.delete(mtrd, 0, axis=0)
 # =================================================================================================================== #
 
 
+mtrec = np.zeros([0, npar])  # Reconstructed tracks matrix
+
 for it in range(nt):
     vw = np.asarray([wx, wy, wt])
     mvw = np.zeros([3, 3])
@@ -528,7 +527,7 @@ for it in range(nt):
         mErr = mK.I
 
         va = np.asmatrix(va).T  # Vertical Measurement Vector
-        vsol = np.dot(mErr, va)  # SEA equation
+        vsol = np.dot(mErr, va)  # SEA equation [s = E·a]
 
         sks = float(np.dot(vsol.T, np.dot(mK, vsol)))  # s'·K·s
         sa = float(np.dot(vsol.T, va))  # s'·a
@@ -540,18 +539,18 @@ for it in range(nt):
         vsol = np.asarray(vsol.T)[0]  # Make it a normal array again
 
         vdif = vs - vsol
-        vdif = abs(vdif) / abs(vsol)  # (modulo de la diferencia)/(modulo del vector)
+        vdif = abs(vdif) / abs(vsol)
         vcut = max(vdif)
         vs = vsol
         nit += 1
 
-    mtrec[it, :] = vsol
-mtrec = mtrec[~(mtrec == 0).all(1)]
+    mtrec = np.vstack((mtrec, vsol))
 
-# Distances among Reconstructed and Generated SAETAs
+#   D I S T A N C E S   B E T W E E N   R E C O N S T R U C T E D
+#           A N D   G E N E R A T E D   S A E T A S
+#           Array to store the deltas of the SAETAs
 
 mdelt = np.zeros([6, 0])
-
 for trk in range(nt):  # Loop on reconstructed tracks
     # Subindices: (rec)onstructed, (gen)erated
     deltx0 = abs(mtrec[trk, 0] - mtgen[trk, 0])  # X0_rec - X0_gen
@@ -574,44 +573,44 @@ if config["plots"]["histos"]:
     saving = config["plots"]["save-histos"]  # Configuration boolean for saving png
 
     plt.figure(1)
-    n, bins, patches = plt.hist(mdelt[5], bins='auto')  # , bins=20, alpha=1, linewidth=1)
-    plt.title('Distancia entre puntos incidencia y reconstruidos')
+    n, bins, patches = plt.hist(mdelt[5], bins='auto')
+    plt.title('Distance between incident and reconstructed points')
     plt.grid(True)
     if saving:
         plt.savefig("Hist_dist.png", bbox_inches='tight')
 
     plt.figure(2)
-    n2, bins2, patches2 = plt.hist(mdelt[0], bins='auto')  # , bins=20, alpha=1, linewidth=1)
-    plt.title('Distancia entre puntos incidencia en X y reconstruidos en X')
+    n2, bins2, patches2 = plt.hist(mdelt[0], bins='auto')
+    plt.title('Distance between incident and reconstructed points in X axis')
     plt.grid(True)
     if saving:
         plt.savefig("Hist_distX.png", bbox_inches='tight')
 
     plt.figure(3)
-    n3, bins3, patches3 = plt.hist(mdelt[2], bins='auto')  # , bins=20, alpha=1, linewidth=1)
-    plt.title('Distancia entre puntos incidencia en Y y reconstruidos en Y')
+    n3, bins3, patches3 = plt.hist(mdelt[2], bins='auto')
+    plt.title('Distance between incident and reconstructed points in Y axis')
     plt.grid(True)
     if saving:
         plt.savefig("Hist_distY.png", bbox_inches='tight')
 
     # Scatter plot
-    plt.figure(4)
-    plt.scatter(mdelt[0], mdelt[2])  # X0 & Y0
-    plt.title('Scatter plot distX vs distY')
+    plt.figure("X0 & Y0")
+    plt.scatter(mdelt[0], mdelt[2])
+    plt.title('Deltas on X0 versus Y0')
     plt.grid(True)
     if saving:
         plt.savefig("Scatterplot_XY.png", bbox_inches='tight')
 
-    plt.figure(5)
-    plt.scatter(mdelt[0], mdelt[1])  # X0 & XP
-    plt.title('Scatter plot distX vs distX´ ')
+    plt.figure("X0 & XP")
+    plt.scatter(mdelt[0], mdelt[1])
+    plt.title('Deltas on X0 versus XP')
     plt.grid(True)
     if saving:
         plt.savefig("Scatterplot_XXP.png", bbox_inches='tight')
 
-    plt.figure(6)
-    plt.scatter(mdelt[2], mdelt[3])  # Y0 & YP
-    plt.title('Scatter_plot distY vs distY´ ')
+    plt.figure("Y0 & YP")
+    plt.scatter(mdelt[2], mdelt[3])
+    plt.title('Deltas on Y0 versus YP')
     plt.grid(True)
     if saving:
         plt.savefig("Scatterplot_YYP.png", bbox_inches='tight')
@@ -625,8 +624,6 @@ if config["plots"]["3D-plot"]:
 
 
 if config["prints"]["matrices"]:
-    # Calculation of the Reduced Error Matrix:
-    mRed = set_reduced_matrix(mErr)
 
     print('Distance among GENERATED and RECONSTRUCTED tracks')
     n, bins = np.histogram(mdelt[5])
@@ -647,6 +644,8 @@ if config["prints"]["matrices"]:
     print(f'| Std. dev.: {std:.3f} mm\t|')
     print(f'+-----------------------+')
 
+    # Calculation of the Reduced Error Matrix:
+    mRed = set_reduced_matrix(mErr)
     print('\nReduced Error Matrix:')
     for row in mRed:
         for col in row:
