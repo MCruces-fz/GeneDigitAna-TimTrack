@@ -17,15 +17,33 @@ from scipy import stats
 
 np.set_printoptions(formatter={'float': '{:.3f}'.format})
 time_start = time.perf_counter()
+plt.close('all')
 # np.random.seed(11)
+
+# =================================================================================================================== #
+# ============================================ I N I T   V A L U E S ================================================ #
+# =================================================================================================================== #
+
+config = {
+    "plots": {
+        "3D-plot": False,
+        "save-3D-plot": False,
+        "histos": True,
+        "save-histos": False
+    },
+    "prints": {
+        "matrices": True,
+        "saetas": True
+    }
+}
+
+final_prints = True
+if_repr = True
+ntrack = 3  # No. of tracks to generate
 
 # =================================================================================================================== #
 # ============================================== C O N S T A N T S ================================================== #
 # =================================================================================================================== #
-
-# Initial Configuration
-final_prints = True
-if_repr = True
 
 # Physical Constants
 c = 0.3  # [mm/ps]
@@ -45,7 +63,6 @@ vini = beta * c  # [mm/ps] Initial Velocity
 sini = 1 / vini  # [ps/mm]
 pmom = betgam * mass  # [MeV/c^2]
 
-ntrack = 3  # No. of tracks to generate
 thmax = 10  # [deg] max theta
 npar = 6  # No. of fit parameters
 ndac = 3
@@ -172,6 +189,54 @@ def set_vstat_tt(mG, mW, vdat, vg0):
     d_g0 = vdat - vg0
     va_out = np.dot(mG.T, np.dot(mW, d_g0))
     return va_out
+
+
+def diag_matrix(dim: int, diag: list):
+    """
+    Create squared k_mat of dimXdim dimension with diag in the diagonal.
+
+    :param dim: Quantity of rows/columns.
+    :param diag: String of length dim with the diagonal values.
+    :return: Squared k_mat of dimXdim dimension with diag in the diagonal.
+    """
+    arr = np.zeros([dim, dim])
+    row, col = np.diag_indices(arr.shape[0])
+    arr[row, col] = np.asarray(diag)
+    return arr
+
+
+def set_reduced_matrix(error_matrix):
+    """
+    Calculation of the Reduced Error Matrix
+
+    :param error_matrix: mErr in this code
+    :return: Reduced Error Matrix
+    """
+    mErr = np.asarray(error_matrix)
+
+    sig_vector = np.sqrt(np.diag(mErr))[np.newaxis]
+    """
+    [sigp1, sigp2, ..., sigp6]
+    """
+    sig_matrix = np.triu(1 / np.dot(sig_vector.T, sig_vector), k=1)  # Sigmas Matrix
+    """
+    SIGMAS MATRIX:
+    [0    , 1/(sigp1*sigp2), 1/(sigp1*sigp3), ...      , 1/(sigp1*sigp6)]
+    [0    , 0              , 1/(sigp2*sigp3), ...      , 1/(sigp2*sigp6)]
+    [0    , 0              , 0              , ...      , 1/(sigp3*sigp6)]
+    [0    ,                ,                , 0        , 1/(sigpN*sigp6)]
+    [0    ,                ,                ,          , 0              ]
+    """
+    red_matrix = mErr * sig_matrix + diag_matrix(npar, sig_vector)  # Reduced Error Matrix
+    """
+    SIGMAS MATRIX:
+    [sigp1  , Err_12/(sigp1*sigp2), Err_13/(sigp1*sigp3), ...      , Err_16/(sigp1*sigp6)]
+    [0      , sigp2               , Err_23/(sigp2*sigp3), ...      , Err_26/(sigp2*sigp6)]
+    [0      , 0                   , sigp3               , ...      , Err_36/(sigp3*sigp6)]
+    [0      , 0                   , 0                   , sigpN    , Err_N6/(sigpN*sigp6)]
+    [0      , 0                   , 0                   , 0        , sigp6               ]
+    """
+    return red_matrix
 
 
 # P L O T   F U N C T I O N S
@@ -432,6 +497,7 @@ for it in range(nt):
     mvw = np.zeros([3, 3])
     mvw[[0, 1, 2], [0, 1, 2]] = vw  # Fill diagonal with vw
     vs = [(lenx / 2), 0, (leny / 2), 0, 0, sc]
+    vsol = None
     vcut = 1
     cut = 0.1
     nit = 0
@@ -481,102 +547,88 @@ for it in range(nt):
     mtrec[it, :] = vsol
 mtrec = mtrec[~(mtrec == 0).all(1)]
 
-# Calculo distancias entre puntos de incidencia y reconstruidos
+# Distances among Reconstructed and Generated SAETAs
 
-distanciax = np.zeros([nt, 1])
-distanciay = np.zeros([nt, 1])
-distanciaxp = np.zeros([nt, 1])
-distanciayp = np.zeros([nt, 1])
-distancia = np.zeros([nt, 1])
-for i in range(nt):
-    for j in range(6):
-        distanciax = abs(mtrec[:, 0] - mtgen[:, 0])
-        distanciay = abs(mtrec[:, 2] - mtgen[:, 2])
-        distanciaxp = abs(mtrec[:, 1] - mtgen[:, 1])
-        distanciayp = abs(mtrec[:, 3] - mtgen[:, 3])
-        distancia = np.sqrt(distanciax ** 2 + distanciay ** 2)
+mdelt = np.zeros([6, 0])
 
-# Hago un histograma con esas distancias
-plt.figure(1)
-n, bins, patches = plt.hist(distancia, bins=20, alpha=1, linewidth=1)
-plt.title('Distancia entre puntos incidencia y reconstruidos')
-plt.grid(True)
-# plt.savefig("Hist_dist.png", bbox_inches='tight')
+for trk in range(nt):  # Loop on reconstructed tracks
+    # Subindices: (rec)onstructed, (gen)erated
+    deltx0 = abs(mtrec[trk, 0] - mtgen[trk, 0])  # X0_rec - X0_gen
+    deltxp = abs(mtrec[trk, 1] - mtgen[trk, 1])  # XP_rec - XP_gen
+    delty0 = abs(mtrec[trk, 2] - mtgen[trk, 2])  # Y0_rec - Y0_gen
+    deltyp = abs(mtrec[trk, 3] - mtgen[trk, 3])  # YP_rec - YP_gen
+    deltt0 = abs(mtrec[trk, 4] - mtgen[trk, 4])  # T0_rec - T0_gen
+    tdist = np.sqrt(deltx0 ** 2 + delty0 ** 2)  # Distance to the coordinated origin at upper plane
 
-plt.figure(2)
-n2, bins2, patches2 = plt.hist(distanciax, bins=20, alpha=1, linewidth=1)
-plt.title('Distancia entre puntos incidencia en X y reconstruidos en X')
-plt.grid(True)
-# plt.savefig("Hist_distX.png", bbox_inches='tight')
+    column = np.array([[deltx0],
+                       [deltxp],
+                       [delty0],
+                       [deltyp],
+                       [deltt0],
+                       [tdist]])
 
-plt.figure(3)
-n3, bins3, patches3 = plt.hist(distanciay, bins=20, alpha=1, linewidth=1)
-plt.title('Distancia entre puntos incidencia en Y y reconstruidos en Y')
-plt.grid(True)
-# plt.savefig("Hist_distY.png", bbox_inches='tight')
+    mdelt = np.hstack((mdelt, column))
 
-# Scatter plot
-plt.figure(4)
-plt.scatter(distanciax, distanciay)  # , marker='o')  # , s=1)
-plt.title('Scatter plot distX vs distY')
-plt.grid(True)
-# plt.savefig("Scatterplot_XY.png", bbox_inches='tight')
+if config["plots"]["histos"]:
+    saving = config["plots"]["save-histos"]  # Configuration boolean for saving png
 
-plt.figure(5)
-plt.scatter(distanciax, distanciaxp)  # , marker='.')  # , s=1)
-plt.title('Scatter plot distX vs distX´ ')
-plt.grid(True)
-# plt.savefig("Scatterplot_XXP.png", bbox_inches='tight')
+    plt.figure(1)
+    n, bins, patches = plt.hist(mdelt[5], bins='auto')  # , bins=20, alpha=1, linewidth=1)
+    plt.title('Distancia entre puntos incidencia y reconstruidos')
+    plt.grid(True)
+    if saving:
+        plt.savefig("Hist_dist.png", bbox_inches='tight')
 
-plt.figure(6)
-plt.scatter(distanciay, distanciayp)  # , marker='X')  # , s=1)
-plt.title('Scatter_plot distY vs distY´ ')
-plt.grid(True)
-# plt.savefig("Scatterplot_YYP.png", bbox_inches='tight')
+    plt.figure(2)
+    n2, bins2, patches2 = plt.hist(mdelt[0], bins='auto')  # , bins=20, alpha=1, linewidth=1)
+    plt.title('Distancia entre puntos incidencia en X y reconstruidos en X')
+    plt.grid(True)
+    if saving:
+        plt.savefig("Hist_distX.png", bbox_inches='tight')
 
+    plt.figure(3)
+    n3, bins3, patches3 = plt.hist(mdelt[2], bins='auto')  # , bins=20, alpha=1, linewidth=1)
+    plt.title('Distancia entre puntos incidencia en Y y reconstruidos en Y')
+    plt.grid(True)
+    if saving:
+        plt.savefig("Hist_distY.png", bbox_inches='tight')
 
-if if_repr:
-    # prob_tt = mtrec[:, -1]
-    # prob_kf = m_stat[:, -1]
-    # k_mat_gene = mdat
+    # Scatter plot
+    plt.figure(4)
+    plt.scatter(mdelt[0], mdelt[2])  # X0 & Y0
+    plt.title('Scatter plot distX vs distY')
+    plt.grid(True)
+    if saving:
+        plt.savefig("Scatterplot_XY.png", bbox_inches='tight')
+
+    plt.figure(5)
+    plt.scatter(mdelt[0], mdelt[1])  # X0 & XP
+    plt.title('Scatter plot distX vs distX´ ')
+    plt.grid(True)
+    if saving:
+        plt.savefig("Scatterplot_XXP.png", bbox_inches='tight')
+
+    plt.figure(6)
+    plt.scatter(mdelt[2], mdelt[3])  # Y0 & YP
+    plt.title('Scatter_plot distY vs distY´ ')
+    plt.grid(True)
+    if saving:
+        plt.savefig("Scatterplot_YYP.png", bbox_inches='tight')
+
+    plt.show()
+
+if config["plots"]["3D-plot"]:
     plot_detector(fig_id=f"Genedigitana {ntrack}", plt_title=f"Tim Track", cells=True,
                   k_mat=mtrd, mtrack=mtgen, mrec=mtrec)  # , prob_ary=prob_tt)
     plt.show()
 
-if final_prints:
-    # Matriz de error reducida
 
-    sigp1 = np.sqrt(mErr[0, 0])
-    sigp2 = np.sqrt(mErr[1, 1])
-    sigp3 = np.sqrt(mErr[2, 2])
-    sigp4 = np.sqrt(mErr[3, 3])
-    sigp5 = np.sqrt(mErr[4, 4])
-    sigp6 = np.sqrt(mErr[5, 5])
+if config["prints"]["matrices"]:
+    # Calculation of the Reduced Error Matrix:
+    mRed = set_reduced_matrix(mErr)
 
-    cor12 = mErr[0, 1] / (sigp1 * sigp2)
-    cor13 = mErr[0, 2] / (sigp1 * sigp3)
-    cor14 = mErr[0, 3] / (sigp1 * sigp4)
-    cor15 = mErr[0, 4] / (sigp1 * sigp5)
-    cor16 = mErr[0, 5] / (sigp1 * sigp6)
-    cor23 = mErr[1, 2] / (sigp2 * sigp3)
-    cor24 = mErr[1, 3] / (sigp2 * sigp4)
-    cor25 = mErr[1, 4] / (sigp2 * sigp5)
-    cor26 = mErr[1, 5] / (sigp2 * sigp6)
-    cor34 = mErr[2, 3] / (sigp3 * sigp4)
-    cor35 = mErr[2, 4] / (sigp3 * sigp5)
-    cor36 = mErr[2, 5] / (sigp3 * sigp6)
-    cor45 = mErr[3, 4] / (sigp4 * sigp5)
-    cor46 = mErr[3, 5] / (sigp4 * sigp6)
-    cor56 = mErr[4, 5] / (sigp5 * sigp6)
-
-    mRed = np.array([[sigp1, cor12, cor13, cor14, cor15, cor16],
-                     [0, sigp2, cor23, cor24, cor25, cor26],
-                     [0, 0, sigp3, cor34, cor35, cor36],
-                     [0, 0, 0, sigp4, cor45, cor46],
-                     [0, 0, 0, 0, sigp5, cor56],
-                     [0, 0, 0, 0, 0, sigp6]])
-
-    print('Distance between GENERATED and RECONSTRUCTED tracks')
+    print('Distance among GENERATED and RECONSTRUCTED tracks')
+    n, bins = np.histogram(mdelt[5])
     # Mean
     s = 0
     for i in range(len(n)):
@@ -590,11 +642,11 @@ if final_prints:
     std = np.sqrt(t / np.sum(n))
 
     print(f'+-----------------------+')
-    print(f'| Mean: {mean:.3f} mm      |')
-    print(f'| Std. dev.: {std:.3f} mm |')
+    print(f'| Mean: {mean:.3f} mm  \t\t|')
+    print(f'| Std. dev.: {std:.3f} mm\t|')
     print(f'+-----------------------+')
 
-    print('\nError Matrix:')
+    print('\nReduced Error Matrix:')
     for row in mRed:
         for col in row:
             print(f"{col:8.3f}", end=" ")
