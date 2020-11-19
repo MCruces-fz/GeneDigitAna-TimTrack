@@ -24,7 +24,10 @@ plt.close('all')
 # ============================================ I N I T   V A L U E S ================================================ #
 # =================================================================================================================== #
 
+# C O N F I G U R A T I O N
+
 config = {
+    "ntrack": 3,  # No. of tracks to generate
     "plots": {
         "3D-plot": False,
         "save-3D-plot": False,
@@ -36,10 +39,6 @@ config = {
         "saetas": True
     }
 }
-
-final_prints = True
-if_repr = True
-ntrack = 3  # No. of tracks to generate
 
 # =================================================================================================================== #
 # ============================================== C O N S T A N T S ================================================== #
@@ -63,6 +62,7 @@ vini = beta * c  # [mm/ps] Initial Velocity
 sini = 1 / vini  # [ps/mm]
 pmom = betgam * mass  # [MeV/c^2]
 
+ntrack = config["ntrack"]  # Number of tracks to generate
 thmax = 10  # [deg] max theta
 npar = 6  # No. of fit parameters
 ndac = 3
@@ -216,6 +216,7 @@ def set_reduced_matrix(error_matrix):
 
     sig_vector = np.sqrt(np.diag(mErr))[np.newaxis]
     """
+    SIGMAS VECTOR:
     [sigp1, sigp2, ..., sigp6]
     """
     sig_matrix = np.triu(1 / np.dot(sig_vector.T, sig_vector), k=1)  # Sigmas Matrix
@@ -229,7 +230,7 @@ def set_reduced_matrix(error_matrix):
     """
     red_matrix = mErr * sig_matrix + diag_matrix(npar, sig_vector)  # Reduced Error Matrix
     """
-    SIGMAS MATRIX:
+    REDUCED MATRIX:
     [sigp1  , Err_12/(sigp1*sigp2), Err_13/(sigp1*sigp3), ...      , Err_16/(sigp1*sigp6)]
     [0      , sigp2               , Err_23/(sigp2*sigp3), ...      , Err_26/(sigp2*sigp6)]
     [0      , 0                   , sigp3               , ...      , Err_36/(sigp3*sigp6)]
